@@ -11,7 +11,7 @@
 > 
 > 本项目开源仅供**个人学习、研究或自用**。
 > **严禁任何形式的商业转售**（包括但不限于直接出售源码、打包倒卖、二次封装收费等）。
-
+> 本项目为https://github.com/jingguanzhang/gift-book的分支，遵循开源规范，仅供学习交流使用。
 
 > 如果需要二开倒卖请使用这个版本 https://github.com/jingguanzhang/gift-book-lite (含微信小程序)。
 > 请尊重开源精神，违者必究。
@@ -83,7 +83,7 @@ https://github.com/jingguanzhang/gift-book/releases/download/1.1/gift-book.exe
 
 ```
 # 克隆项目
-git clone https://github.com/jingguanzhang/gift-book.git
+git clone https://github.com/jimmyxing001/gift-book.git
 
 # 进入目录
 cd gift-book
@@ -95,7 +95,7 @@ cd gift-book
 
 ### 3. 启动开发
 
-虽然直接双击 `index.html` 可以运行，但为了避免浏览器的安全策略限制（如本地文件访问限制、模块加载跨域等），**强烈建议使用本地静态服务器**运行。
+本项目纯静态、无任何外部模块跨域加载，克隆后**直接双击 `index.html` 即可在浏览器中运行**（离线可用，数据保存在浏览器本地 IndexedDB）。如需热重载或调试，也可使用本地静态服务器：
 
 * **方式一（推荐）：VS Code Live Server**
   
