@@ -6593,6 +6593,19 @@
       }
 
       const app = new GiftBookApp();
+      window.giftBookApp = app;
+
+      // 确保窗口/进程关闭前 IndexedDB 连接被优雅关闭，数据 flush 到磁盘
+      window.addEventListener("beforeunload", () => {
+        try {
+          if (window.giftBookApp && window.giftBookApp.dbManager && window.giftBookApp.dbManager.db) {
+            window.giftBookApp.dbManager.db.close();
+          }
+        } catch (e) {
+          console.warn("关闭 IndexedDB 时出错:", e);
+        }
+      });
+
       app
         .init()
         .then(() => {
@@ -6600,6 +6613,7 @@
           console.log("系统架构: 类化、模块化、现代化");
           console.log("数据加密: AES-256");
           console.log("数据存储: IndexedDB");
+          console.log("页面 origin:", location.origin, "href:", location.href);
         })
         .catch((error) => {
           console.error("? 系统启动失败:", error);
