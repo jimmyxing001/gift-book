@@ -1,8 +1,10 @@
 # aardio 单文件 exe 封包避坑手册（通用版）
 
-> **用途**：把任意纯前端网页（HTML+JS+CSS+资源）打包成**单文件便携 exe**，运行时由 WebView2 渲染、用 `wsock.tcp.simpleHttpServer` 从内存资源流提供页面。
-> 本文档由多次真实踩坑（271c / 图标缓存 / 关闭卡死 / 进程残留 / IndexedDB 跨运行丢失）提炼，**与具体业务无关**，可直接用于下次打包其它网页程序。
+> **用途**：把任意纯前端网页（HTML+JS+CSS+资源）打包成**单文件便携 exe**，运行时由 WebView2 渲染、用 `wsock.tcp.simpleHttpServer` 从内存资源流提供页面。  
+> 本文档由多次真实踩坑（271c / 图标缓存 / 关闭卡死 / 进程残留 / IndexedDB 跨运行丢失）提炼，**与具体业务无关**，可直接用于下次打包其它网页程序。  
 > 配套完整范式见文末「✅ 最终 main.aardio 范式」。
+
+
 
 > **严重度图例**：🔴 致命（不修必翻车）｜⚠️ 重要（易卡很久）｜💡 注意（省时间的细节）
 
@@ -21,6 +23,7 @@
 ## 一、工程结构与 `.aproj` 资源清单（🔴 271c 元凶）
 
 ### 坑 1：`.aproj` 必须「平铺」，禁止嵌套 folder
+
 - **现象**：F7 报 `271c`（`\xxx.html` 未找到），连锁 `7005`（生成 exe 失败）。
 - **根因**：在 `web` 下又嵌套了 `static` 子 `<folder>`。aardio 发布时的 HTML 依赖预扫描未能正确注册 `/web/index.html`，于是把 `index.html` 里的 `./guest-screen.html` **回退到从工程根解析** → 去找 `\guest-screen.html` → 找不到 → 271c。
 - **正确写法**：只用一个 `<folder name="web" embed="true">`，其下**直接列出全部 `<file>`**（含 `web\static\xxx`），**严禁**把 `static` 等再套成嵌套 `<folder>`。
@@ -34,12 +37,15 @@
   ```
 
 ### 坑 2：每个 `<file path>` 写全路径
+
 - 必须带 `web\` 前缀的反斜杠全路径：`web\guest-screen.html`、`web\static\app.js`，**不能只写文件名**。
 
 ### 坑 3：生成 `.aproj` 后必须校验
+
 - 脚本遍历真实 `web/` 生成 `.aproj`，并断言**所有 `path` 在磁盘真实存在**（`missing == NONE`）再交付构建。否则漏文件只会在 F7 时才暴露。
 
 ### 坑 4：工程目录要写到真实磁盘
+
 - ⚠️ 若用沙箱/远程环境改过 `aardio-project/`，确认它已落到**真实磁盘**。曾出现“只存在于沙箱视图、真实磁盘缺失”导致无法复现构建。
 
 ---
@@ -47,11 +53,13 @@
 ## 二、程序图标（💡 缓存错觉最多）
 
 ### 坑 5：`icon` 属性写法
+
 - `<project>` 加 `icon="\icon.ico"`：**前导反斜杠 = 工程根相对路径**（沿用官方 `WinAsar.aproj` 写法）。`icon.ico` 与 `.aproj` 同目录。
 - 图标是**编译期 PE 资源**，**不要**列入 embed `<folder>` 资源清单。
 - `icon="\icon.ico"` 写法正确，**不要**改成 `icon="icon.ico"`（无反斜杠反而破坏已验证配置）。
 
 ### 坑 6：打包后图标“看着没变”≈ Windows 图标缓存
+
 - 同名同路径 exe 被覆盖时，资源管理器显示**旧缓存缩略图**，不代表打包失败。
 - **判定是否真嵌入**：用 `pefile` 解析 exe 的 `RT_ICON`，若 9 张图字节数与 `icon.ico` 逐张吻合，则已正确嵌入。
 - 让原名显示正确图标：结束 `explorer.exe` → 删 `%LocalAppData%\Microsoft\Windows\Explorer\iconcache*.db` → 重启 `explorer.exe`；或把 exe 改名/移到新路径（新名立即显示）。
@@ -61,16 +69,20 @@
 ## 三、构建 / 编译（⚠️ 最容易白忙）
 
 ### 坑 7：aardio 无法无头编译
+
 - `aardio.exe /build xxx.aproj` 会直接拉起 IDE 窗口并等待显示会话，无图形界面时 `rc=124` 超时、零输出、不生成文件。
 - **必须在有图形界面的机器上**：打开 aardio → `文件 → 打开工程` → 选 `.aproj` → 按 **F7 发布**。
 
 ### 坑 8：不要只双击 `main.aardio`
+
 - 只双击 `main.aardio` 当作临时工程发布 → 不会读取 `.aproj` 资源清单 → 必报 271c。务必打开 `.aproj`。
 
 ### 坑 9：F7 完成框别勾「版本号自增」
+
 - 勾了下次 F7 自动变 1.1.2。建议取消勾选，版本号在 `.aproj` 写死。
 
 ### 坑 10：杀软拦截
+
 - 仅弹 `7005`（"安全监控类软件"）多为 Defender 实时防护拦截 exe 写入，临时关闭防护后重试。
 
 ---
@@ -78,6 +90,7 @@
 ## 四、关闭退出 & 进程管理（🔴 最磨人的一类）
 
 ### 坑 11：`winform.onClose` 里【禁止】任何同步阻塞操作
+
 - 以下都会阻塞主消息循环，导致窗口卡死 / 报 “C stack overflow” / 显示 “未响应”：
   - `wb.closeAndWait()`：内部是 `while(isWindow(hwndChrome)) delay(10)` 死循环（父窗口在 onClose 中根本没机会销毁，循环永不结束）。
   - `wb.doScript()`：关闭时 WebView2 不响应 → 主线程卡住。
@@ -85,22 +98,28 @@
 - **正确**：`onClose` 只设 `isClosing` 标志，**返回 `null`** 走默认关闭流程，不做任何清理。
 
 ### 坑 12：真正清理放 `winform.onDestroy`
+
 - `onDestroy` 中：① kill 本进程派生的 `msedgewebview2.exe` 子进程；② 用 `process(curPid).terminate(0)` 结束当前 exe 主进程。
 
 ### 坑 13：自杀【禁用】`::Kernel32.ExitProcess(0)`
+
 - 实测在该 aardio + WebView2 场景下，`ExitProcess(0)` 后主进程仍从“应用”降级为“后台进程”继续驻留；后台 `thread.create` 线程也未按预期执行。
 
 ### 坑 14：自杀【禁用】`process(curPid).kill()`
+
 - aardio 的 `kill()` 内部先 `suspend()` 再 `terminate()`；对自己调用会**冻结当前线程**，进程看似“从应用降级为背景进程”实际被挂起 → 无法退出。
 - ✅ **自杀唯一正确**：`process(curPid).terminate(0)`（直接调用 Windows `TerminateProcess`）。
 
 ### 坑 15：`self` 是 aardio 保留字
+
 - `var self = ...` 会报编译错误 `7007 Expected: '<name>' Near: 'self'`。自杀时改用 `var selfPrcs = process(curPid)`。
 
 ### 坑 16：必须做单实例互斥体
+
 - `process.mutex("你的唯一名")`：冲突时前置已有窗口；若找不到窗口，则动态取当前 exe 名（`io.splitpath(process.getPath(pid)).file`）枚举 kill 残留同名进程后再启动。避免多实例抢端口、数据混乱。
 
 ### 坑 17：网页侧负责关闭 IndexedDB
+
 - `index.html` 必须在 `beforeunload` 中 `dbManager.db.close()`，让浏览器默认关闭流程触发落盘。**不要在 aardio 中同步触发**。
 
 ---
@@ -108,10 +127,12 @@
 ## 五、IndexedDB 跨运行持久化（🔴 致命坑，本手册核心）
 
 ### 坑 18：simpleHttpServer 默认随机端口 → 记录跨运行“消失”
+
 - **根因**：`web.view` 经 `wsock.tcp.simpleHttpServer` 提供页面，该服务器**默认每次启动分配随机空闲端口（49152~65535）**。而 IndexedDB 以“源（协议+主机+**端口**）”隔离，**端口一变源就变**，记录被写入各自独立的空库 → 重开即“无历史”。
 - **实证**：磁盘 IndexedDB 目录下出现一堆 `http_127.0.0.1_<不同端口>.indexeddb.leveldb`。
 
 ### 坑 19：固定端口的【正确写法】——直接设置 startPort
+
 - ✅ 在 `wb.go()` **之前**直接设置：
   ```aardio
   var FIXED_PORT = 52417;
@@ -121,9 +142,11 @@
 - ❌ **不要先创建探测服务器再 `stop()` 释放**：`var t = wsock.tcp.simpleHttpServer("127.0.0.1", FIXED_PORT); t.stop();` ——该实例可能无法立即释放端口，导致 `wb.go()` 内部正式服务退到随机端口，IndexedDB 仍写在随机 origin 下（这是二次翻车的真实原因）。
 
 ### 坑 20：exe 源 vs 浏览器源天然不同（设计使然，非 bug）
+
 - 浏览器直接打开 `index.html`（file:// 或固定 dev 端口）与 exe 版本（内嵌随机/固定 HTTP 源）是**不同源**，IndexedDB 互不通用，属于设计使然，不要误判为持久化 bug。
 
 ### 坑 21：重新初始化数据 = 删对应 IndexedDB 目录
+
 - 路径：`%LocalAppData%\<你的userDataDir>\EBWebView\Default\IndexedDB\http_127.0.0.1_<端口>.indexeddb.leveldb`
   - 本项目示例：`C:\Users\<用户>\AppData\Local\电子礼簿\webview2\EBWebView\Default\IndexedDB\http_127.0.0.1_52417.indexeddb.leveldb`
 - **端口即源即目录名**。固定端口后，要清数据只需删该端口对应的文件夹（先彻底关闭 exe，否则文件被锁）。
@@ -134,9 +157,11 @@
 ## 六、调试方法论（💡 盲修无效时）
 
 ### 坑 22：本环境无法测试 aardio GUI 构建
+
 - 无头 `aardio /build` 会拉起 IDE 卡死。所有 `main.aardio` 改动只能靠读 aardio 源码推演（盲修），需你在**本机 F7 打包 + 运行测试**。
 
 ### 坑 23：盲修连败时，先“测量”再改
+
 - 给 `main.aardio` 加日志：`io.file` 追加写 `%LocalAppData%\<你的App>\close-debug.log`，在 `onClose`/`onDestroy` 各阶段打点。
 - 让你跑一次把日志发回，先看卡在哪一步，再针对性改，而不是继续猜。
 
@@ -243,6 +268,7 @@ win.loopMessage();
 ```
 
 ### 网页侧配套（`index.html`）
+
 ```js
 // 关闭时由浏览器默认流程触发，关闭 IndexedDB 连接确保落盘
 window.addEventListener("beforeunload", () => {

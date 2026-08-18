@@ -621,7 +621,7 @@
         }
 
         renderGiftBook(data) {
-          const { gifts, hidePrivacy, typeText } = data;
+          const { gifts, hidePrivacy, hideAmountPrivacy, typeText } = data;
           const ITEMS_PER_PAGE = 12;
           const latestGiftId = gifts[gifts.length - 1]?.id;
           const displayGifts = [...gifts];
@@ -652,12 +652,18 @@
             const amountCell = document.createElement("div");
             amountCell.className = "book-cell amount-cell";
             if (gift) {
-              const amountChinese = gift.amountChinese;
+              const isLatestAmount = gift.id === latestGiftId;
+              let amountChinese = gift.amountChinese;
+              let amountNumericText = `￥${gift.amount}`;
+              if (hideAmountPrivacy && !isLatestAmount) {
+                amountChinese = "**元整";
+                amountNumericText = "**";
+              }
               amountCell.innerHTML = `
                 <div class="amount-chinese ${amountChinese.length > 16 ? "scale" : ""}">${amountChinese}</div>
-                <div class="amount-numeric ${Math.abs(gift.amount).toString().length > 8 ? "scale" : ""}">￥${gift.amount}</div>
+                <div class="amount-numeric ${amountNumericText.length > 8 ? "scale" : ""}">${amountNumericText}</div>
               `;
-              if (gift.id === latestGiftId) amountCell.classList.add("latest-entry");
+              if (isLatestAmount) amountCell.classList.add("latest-entry");
             }
             amountRow.appendChild(amountCell);
           });

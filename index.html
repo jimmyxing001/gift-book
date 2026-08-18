@@ -3740,6 +3740,7 @@
                 amountChinese: Utils.amountToChinese(g.data.amount),
               })),
               hidePrivacy: this.app.currentEvent.hidePrivacy || false,
+              hideAmountPrivacy: this.app.currentEvent.hideAmountPrivacy || false,
               typeText: this.app.currentEvent.theme === "theme-solemn" ? "礼金" : "贺礼",
             },
             timestamp: Date.now(),
@@ -6193,9 +6194,14 @@
           <div>
           <label class="flex items-center cursor-pointer">
             <input type="checkbox" id="edit-hide-privacy" class="w-4 h-4 themed-ring rounded mr-2" ${this.currentEvent.hidePrivacy ? "checked" : ""}>
-            <span class="text-sm font-medium text-gray-700">副屏信息脱敏显示</span>
+            <span class="text-sm font-medium text-gray-700">副屏姓名脱敏显示</span>
           </label>
-          <p class="text-xs text-gray-500 mt-1">开启后，副屏仅显示最新录入记录的完整姓名，其他记录脱敏显示。</p>
+          <p class="text-xs text-gray-500 mt-1">开启后，副屏仅显示最新录入记录的完整姓名，其他记录姓名脱敏显示为**。</p>
+          <label class="flex items-center cursor-pointer mt-3">
+            <input type="checkbox" id="edit-hide-amount-privacy" class="w-4 h-4 themed-ring rounded mr-2" ${this.currentEvent.hideAmountPrivacy ? "checked" : ""}>
+            <span class="text-sm font-medium text-gray-700">副屏金额脱敏显示</span>
+          </label>
+          <p class="text-xs text-gray-500 mt-1">开启后，副屏仅显示最新录入记录的金额，其他记录金额脱敏显示为**。</p>
         </div>
         </div>
 
@@ -6254,6 +6260,7 @@
                 const newEndDateTime = `${document.getElementById("edit-end-date").value}T${document.getElementById("edit-end-time").value}`;
                 const newRecorder = document.getElementById("edit-event-recorder").value.trim();
                 const hidePrivacy = document.getElementById("edit-hide-privacy").checked;
+                const hideAmountPrivacy = document.getElementById("edit-hide-amount-privacy").checked;
                 const pdfEngineSelection = document.querySelector('input[name="edit-pdf-engine"]:checked')?.value || "browser";
 
                 // 基础验证
@@ -6294,6 +6301,7 @@
                   recorder: newRecorder,
                   minSpeechAmount: newMinSpeechAmount,
                   hidePrivacy: hidePrivacy,
+                  hideAmountPrivacy: hideAmountPrivacy,
                   printOptions: updatedPrintOptions,
                 };
 
