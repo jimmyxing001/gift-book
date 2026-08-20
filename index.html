@@ -3702,6 +3702,8 @@
           const screenWidth = window.screen.availWidth;
           const screenHeight = window.screen.availHeight;
 
+          // 副屏页面直接打开；HTTP 缓存已在 aardio web.view 用 --disable-http-cache 关闭，
+          // 故每次都从 exe 内嵌资源加载最新版本，无需 ?v= 缓存破坏符。
           this.guestWindow = window.open("./guest-screen.html", "GuestScreen", `width=${screenWidth},height=${screenHeight},left=0,top=0,location=no,menubar=no,toolbar=no`);
 
           if (this.guestWindow) {

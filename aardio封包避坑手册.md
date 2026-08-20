@@ -152,6 +152,20 @@
 - **端口即源即目录名**。固定端口后，要清数据只需删该端口对应的文件夹（先彻底关闭 exe，否则文件被锁）。
 - 历史 bug 留下的其它随机端口文件夹是废弃空库，可顺手清理。
 
+### 坑 24：固定端口后，WebView2 会缓存旧页面 →「改了代码打包后功能没更新」
+
+- **现象**：修正端口为固定值（如 52417）并 persistent `userDataDir` 后，改了网页代码、F7 重新打包，**运行后新功能却没出现**（比如副屏脱敏开关加了但 exe 里没有）。
+- **根因**：`wsock.tcp.simpleHttpServer` 对静态资源会返回 `Etag` + `Last-Modified` 头、并响应 `If-None-Match` → **304**；且**不带 `Cache-Control: no-store`**。端口固定前，每次运行端口都变、URL 不同，缓存键跟着变，所以从不踩雷；**端口一旦固定，URL 长期稳定，WebView2 的 HTTP 磁盘缓存就按 URL 复用了旧页面**（即使 exe 已重建，旧 URL 的缓存条目仍可能被命中）。
+- **✅ 正确写法（禁用 HTTP 缓存，一劳永逸）**：在创建 `web.view` 时传入 Chromium 启动参数 `--disable-http-cache`，让浏览器**永远直接从 exe 内嵌资源（simpleHttpServer 提供的当前版本页面）读取**，根本不写、不读磁盘 HTTP 缓存：
+  - `main.aardio`：`var wb = web.view(winform, { userDataDir = ...; language = "zh-CN"; }, "--disable-http-cache");`
+  - 副屏 `window.open("./guest-screen.html", ...)` 直接打开即可（同属该 WebView2，同样不吃缓存）。
+  - 页面 URL 保持干净（`/web/index.html`，**不要**加 `?v=` 之类查询串）。
+- **❌ 错误写法（曾在项目中踩过）**：用「每次运行 URL 都唯一」的缓存破坏符，例如 `wb.go("/web/index.html?v=" + GetTickCount())` 或 `?v=" + APP_VERSION`。
+  - 若按**每次启动**（毫秒数/随机串）变化 → 每打开一次 exe 就在磁盘留一份缓存副本，**开 1000 次 = 1000 份**，纯属污染磁盘，绝对不可取。
+  - 若按**版本号**变化 → 同版本内 URL 不变、正常缓存（可接受），但「同版本号重建 exe、内容已变」时仍会命中旧缓存；且本质上仍依赖 HTTP 缓存机制，不如直接关掉干净。
+- **为什么 `--disable-http-cache` 最对路**：它正好实现你想要的「缓存里的程序 = 打开的程序」——因为根本不存在 HTTP 缓存层，浏览器每次都实时读取 exe 内嵌的当前版本；不产生任何缓存副本；IndexedDB 是独立的 Web 存储（非 HTTP 缓存），不受此影响，历史记录依旧正常持久化。
+- **一次性清旧缓存（升级后若仍见旧页面才需要）**：删 `%LocalAppData%\<App>\webview2\EBWebView\Default\` 下的 `Cache`、`Code Cache`、`GPUCache` 即可（**千万别删 `IndexedDB` 文件夹**，那会清掉礼簿记录）。关掉 HTTP 缓存后这些目录通常不再生成。
+
 ---
 
 ## 六、调试方法论（💡 盲修无效时）

@@ -1,9 +1,10 @@
 # ===== 打包 / 构建产物（与网页源码运行无关） =====
-build/
-electron/
-pybuild/
+#build/
+#electron/
+#pybuild/
 aardio-project/
 *.exe
+bug-analysis-and-fix-2026-08-16.md
 
 # ===== 本地 AI 项目数据 =====
 .workbuddy/
